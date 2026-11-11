@@ -16,10 +16,10 @@
     "firebase": "^12.11.0",
     "firebase-admin": "^13.7.0",
     "leaflet": "^1.9.4",
-    "next": "15.5.7",
+    "next": "15.5.29",
     "next-auth": "^4.24.11",
-    "react": "19.1.2",
-    "react-dom": "19.1.2",
+    "react": "19.1.10",
+    "react-dom": "19.1.10",
     "react-leaflet": "^5.0.0",
     "sass": "^1.93.2"
   },
@@ -32,5 +32,8 @@
     "dotenv-cli": "^11.0.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "sharp": "^0.35.5"
   }
 }
