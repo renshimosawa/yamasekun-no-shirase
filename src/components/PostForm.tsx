@@ -440,6 +440,18 @@ export default function PostForm({
         className="h-28 w-full resize-none rounded-xl border border-white/10 bg-white/10 p-3 text-base text-white shadow-inner outline-none transition focus:border-white/30 focus:bg-black/20"
       />
 
+      <p className="text-base leading-relaxed text-zinc-200">
+        投稿は、コメントを除いてオープンデータとして公開されます。位置は約100m単位に丸めて公開します。
+        <a
+          href="/open-data/"
+          target="_blank"
+          rel="noopener"
+          className="ml-1 text-white underline underline-offset-4 hover:decoration-2"
+        >
+          オープンデータについて（新しいタブで開きます）
+        </a>
+      </p>
+
       <div className="flex flex-col gap-3 text-xs text-white/80">
         <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           {message && <span>{message}</span>}
