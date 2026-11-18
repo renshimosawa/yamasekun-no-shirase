@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { Session } from "next-auth";
 import PostForm from "./PostForm";
+
+// 投稿リマインド通知のリンク（/?post=1）から開かれたときに投稿フォームを開く
+const OPEN_POST_FORM_PARAM = "post";
 
 type FloatingPostButtonProps = {
   onSubmitted: () => Promise<void> | void;
@@ -20,11 +23,33 @@ export default function FloatingPostButton({
   status,
 }: FloatingPostButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogPanelRef = useRef<HTMLDivElement>(null);
+  const dialogTitleId = useId();
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get(OPEN_POST_FORM_PARAM) !== "1") {
+      return;
+    }
+
+    // 再読み込みで再びフォームが開かないよう、クエリを消しておく
+    url.searchParams.delete(OPEN_POST_FORM_PARAM);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+    setIsOpen(true);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
+
+    dialogPanelRef.current?.focus();
+    const trigger = triggerRef.current;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -39,12 +64,14 @@ export default function FloatingPostButton({
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
+      trigger?.focus();
     };
   }, [isOpen]);
 
   return (
     <div className="relative w-full">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen(true)}
         className={`group relative flex items-center gap-2 px-5 py-3 justify-center rounded-full text-base font-semibold text-white transition focus:outline-none ${
@@ -84,6 +111,7 @@ export default function FloatingPostButton({
           className="fixed inset-0 z-[4000] flex items-end justify-center p-4 sm:items-center sm:p-8"
           role="dialog"
           aria-modal="true"
+          aria-labelledby={dialogTitleId}
         >
           <button
             type="button"
@@ -91,9 +119,15 @@ export default function FloatingPostButton({
             onClick={() => setIsOpen(false)}
             className="absolute inset-0 cursor-pointer bg-black/70 backdrop-blur-sm transition-opacity"
           />
-          <div className="relative z-10 w-full max-w-[500px] max-h-[90svh] overflow-y-auto rounded-3xl border border-white/10 bg-black/80 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur">
+          <div
+            ref={dialogPanelRef}
+            tabIndex={-1}
+            className="relative z-10 w-full max-w-[500px] max-h-[90svh] overflow-y-auto rounded-3xl border border-white/10 bg-black/80 p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur"
+          >
             <div className="mb-4 flex items-start justify-between gap-4">
-              <h2 className="text-lg font-semibold">投稿を作成</h2>
+              <h2 id={dialogTitleId} className="text-lg font-semibold">
+                投稿を作成
+              </h2>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}

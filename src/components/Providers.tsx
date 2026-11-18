@@ -10,6 +10,22 @@ import { getFirebaseMessagingClient } from "@/lib/firebase-client";
 
 const FCM_TOKEN_STORAGE_KEY = "fcm_registration_token";
 
+// 通知のリンクを同一オリジンのパスに限定する（別オリジンなら "/" にする）
+const toSameOriginPath = (rawLink: string | undefined) => {
+  if (!rawLink) {
+    return "/";
+  }
+  try {
+    const url = new URL(rawLink, window.location.origin);
+    if (url.origin !== window.location.origin) {
+      return "/";
+    }
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/";
+  }
+};
+
 type ProvidersProps = {
   session: Session | null;
   children: ReactNode;
@@ -210,6 +226,7 @@ export default function Providers({ session, children }: ProvidersProps) {
         const body =
           payload.notification?.body ??
           "アプリを開いて最新の投稿を確認してください。";
+        const link = toSameOriginPath(payload.data?.link);
 
         try {
           const notification = new Notification(title, {
@@ -218,7 +235,7 @@ export default function Providers({ session, children }: ProvidersProps) {
             badge: "/favicon.png",
           });
           notification.onclick = () => {
-            window.location.href = "/";
+            window.location.href = link;
           };
         } catch (error) {
           console.error("Failed to show foreground notification", error);
