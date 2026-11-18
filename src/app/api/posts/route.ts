@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { getServerAuthSession } from "@/lib/auth";
-import { getFirebaseAdminMessaging } from "@/lib/firebase-admin";
+import { getTodayDateRangeJst } from "@/lib/date";
 import { reverseGeocode } from "@/lib/geocoding";
+import { sendPushToTokens } from "@/lib/push-notifications";
 import {
   isValidNeutralSmellEmoji,
   isValidSmellType,
@@ -12,43 +13,8 @@ import {
   type SmellType,
 } from "@/constants/smell";
 
-const JAPAN_TZ = "Asia/Tokyo";
-const APP_ORIGIN =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.NEXTAUTH_URL ||
-  "https://yamasekun.jp";
-
 type FcmTokenRecord = {
   token: string;
-};
-
-const getTodayDateRange = () => {
-  const now = new Date();
-  const formatter = new Intl.DateTimeFormat("ja-JP", {
-    timeZone: JAPAN_TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-
-  const parts = formatter
-    .formatToParts(now)
-    .reduce<Record<string, string>>((acc, part) => {
-      if (part.type !== "literal") {
-        acc[part.type] = part.value;
-      }
-      return acc;
-    }, {});
-
-  const year = parts.year;
-  const month = parts.month;
-  const day = parts.day;
-
-  const start = new Date(`${year}-${month}-${day}T00:00:00+09:00`);
-  const end = new Date(`${year}-${month}-${day}T23:59:59.999+09:00`);
-
-  return { start: start.toISOString(), end: end.toISOString() };
 };
 
 type CreatePostRequest = {
@@ -77,11 +43,6 @@ async function notifyNewPost(post: {
   smellType: SmellType | null;
   emoji: string | null;
 }) {
-  const messaging = getFirebaseAdminMessaging();
-  if (!messaging) {
-    return;
-  }
-
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("fcm_tokens")
@@ -93,12 +54,8 @@ async function notifyNewPost(post: {
     return;
   }
 
-  const tokens = Array.from(
-    new Set(
-      ((data as FcmTokenRecord[] | null) ?? [])
-        .map((row) => row.token?.trim())
-        .filter((value): value is string => Boolean(value)),
-    ),
+  const tokens = ((data as FcmTokenRecord[] | null) ?? []).map(
+    (row) => row.token,
   );
 
   if (tokens.length === 0) {
@@ -116,67 +73,13 @@ async function notifyNewPost(post: {
       ? `Lv0 ${post.emoji ?? NEUTRAL_SMELL_EMOJI}`
       : `Lv${post.intensity ?? "-"} ${smellLabel}`;
 
-  const response = await messaging.sendEachForMulticast({
-    tokens,
-    notification: {
-      title: "新しい投稿があります",
-      body: `${meta} - ${truncateText(post.description, 48)}`,
-    },
-    webpush: {
-      fcmOptions: {
-        link: "/",
-      },
-      notification: {
-        icon: `${APP_ORIGIN}/favicon.png`,
-        badge: `${APP_ORIGIN}/favicon.png`,
-      },
-    },
-    data: {
-      type: "new_post",
-      insertedAt: post.insertedAt,
-      link: "/",
-    },
+  await sendPushToTokens(tokens, {
+    title: "新しい投稿があります",
+    body: `${meta} - ${truncateText(post.description, 48)}`,
+    link: "/",
+    type: "new_post",
+    data: { insertedAt: post.insertedAt },
   });
-
-  const failedCodes = response.responses
-    .filter((result) => !result.success)
-    .map((result) => result.error?.code ?? "unknown_error");
-
-  console.info("FCM multicast result", {
-    tokenCount: tokens.length,
-    successCount: response.successCount,
-    failureCount: response.failureCount,
-    failedCodes,
-  });
-
-  const invalidTokens = response.responses
-    .map((result, index) => {
-      if (result.success) {
-        return null;
-      }
-      const code = result.error?.code;
-      if (
-        code === "messaging/registration-token-not-registered" ||
-        code === "messaging/invalid-registration-token"
-      ) {
-        return tokens[index];
-      }
-      return null;
-    })
-    .filter((value): value is string => Boolean(value));
-
-  if (invalidTokens.length === 0) {
-    return;
-  }
-
-  const { error: cleanupError } = await supabase
-    .from("fcm_tokens")
-    .delete()
-    .in("token", invalidTokens);
-
-  if (cleanupError) {
-    console.error("Failed to cleanup invalid FCM tokens", cleanupError);
-  }
 }
 
 export async function POST(request: Request) {
@@ -317,7 +220,7 @@ export async function GET() {
     console.log("[DEBUG] SUPABASE_URL =", process.env.SUPABASE_URL);
     const supabase = getSupabaseAdmin();
 
-    const { start, end } = getTodayDateRange();
+    const { start, end } = getTodayDateRangeJst();
 
     const { data, error } = await supabase
       .from("posts")
