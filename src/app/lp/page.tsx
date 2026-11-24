@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import LpHeroRef from "@/components/LpHeroRef";
+import {
+  SMELL_TYPE_ICON_PATHS,
+  SMELL_TYPE_LABELS,
+  type SmellType,
+} from "@/constants/smell";
 
 export const metadata: Metadata = {
   title: "ヤマセ君の知らせ｜八戸のヤマセと暮らし、つながる。",
@@ -40,6 +45,14 @@ export const metadata: Metadata = {
     canonical: "https://yamasekun.jp/lp/",
   },
 };
+
+const LP_SMELL_TYPES: SmellType[] = [
+  "iron",
+  "hoya",
+  "dog_food",
+  "umineko",
+  "livestock",
+];
 
 const faqs = [
   {
@@ -94,6 +107,52 @@ const characterParts: CharacterPart[] = [
     img: "/smell-icon/umineko.png",
     label: "ウミネコ帽子",
     desc: "粋に被る海の証",
+  },
+];
+
+const usedOpenData = [
+  {
+    name: "地図データ",
+    provider: "OpenStreetMap contributors",
+    license: "ODbL",
+    licenseUrl: "https://www.openstreetmap.org/copyright/ja",
+  },
+  {
+    name: "アメダスの観測データ（気温・風・気圧・天気）",
+    provider: "気象庁",
+    license: "気象庁ホームページ利用規約",
+    licenseUrl: "https://www.jma.go.jp/jma/kishou/info/coment.html",
+  },
+  {
+    name: "八戸の天気予報",
+    provider: "気象庁（天気予報 API〈weather.tsukumijima.net〉経由）",
+    license: "気象庁ホームページ利用規約",
+    licenseUrl: "https://www.jma.go.jp/jma/kishou/info/coment.html",
+  },
+  {
+    name: "住所（逆ジオコーディング）・市区町村コード",
+    provider: "国土地理院",
+    license: "国土地理院コンテンツ利用規約",
+    licenseUrl: "https://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html",
+  },
+];
+
+const openDataFacts = [
+  {
+    term: "公開する内容",
+    desc: "においの強さ（0〜3）と種類、投稿日時、おおよその場所（約100m単位）と町名、投稿時点のアメダスの観測値",
+  },
+  {
+    term: "公開しない内容",
+    desc: "コメントと、誰が投稿したかが分かる情報",
+  },
+  {
+    term: "利用条件",
+    desc: "CC BY 4.0。使うときは「出典：ヤマセ君の知らせ（https://yamasekun.jp）」と書いてください。",
+  },
+  {
+    term: "取得方法",
+    desc: "登録や API キーは要りません。URL にアクセスすると、JSON 形式で取得できます。",
   },
 ];
 
@@ -357,16 +416,16 @@ export default function LandingPage() {
                   「匂い」でつながる報告
                 </h3>
                 <p className="text-slate-900 text-sm leading-relaxed">
-                  「鉄の匂い」「ホヤの匂い」「ドッグフードの匂い」「ウミネコの匂い」。
+                  「鉄の匂い」「ホヤの匂い」「ドッグフードの匂い」「ウミネコの匂い」「家畜の匂い」。
                   八戸特有の感覚をレベル別にリアルタイム投稿。
                 </p>
               </div>
-              <div className="mt-auto flex items-end justify-center gap-2">
-                {["iron", "hoya", "dog_food", "umineko"].map((icon) => (
+              <div className="mt-auto flex flex-wrap items-end justify-center gap-2">
+                {LP_SMELL_TYPES.map((smellType) => (
                   <Image
-                    key={icon}
-                    src={`/smell-icon/${icon}.png`}
-                    alt={icon}
+                    key={smellType}
+                    src={SMELL_TYPE_ICON_PATHS[smellType]}
+                    alt={SMELL_TYPE_LABELS[smellType]}
                     width={48}
                     height={48}
                     className="drop-shadow-sm"
@@ -399,6 +458,92 @@ export default function LandingPage() {
                 />
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* オープンデータ */}
+      <section
+        id="open-data"
+        aria-labelledby="open-data-heading"
+        className="bg-cyan-50 py-20 px-6"
+      >
+        <div className="max-w-3xl mx-auto">
+          <p className="text-center text-cyan-800 text-sm font-bold tracking-widest mb-2">
+            OPEN DATA
+          </p>
+          <h2
+            id="open-data-heading"
+            className="text-center text-2xl sm:text-3xl font-black text-slate-800 mb-8"
+          >
+            市民の投稿をオープンデータとして公開しています
+          </h2>
+          <div className="space-y-5 text-slate-900 leading-relaxed text-base sm:text-lg">
+            <p>
+              においの強さと種類、投稿した日時と場所を、そのときの気象データと一緒に公開しています。誰でも無料で、商用利用も含めて自由に使えます。
+            </p>
+            <p>
+              ヤマセのにおいは、アメダスの観測項目にはありません。八戸で暮らす一人ひとりの投稿が集まって、はじめて記録として残ります。
+            </p>
+            <p>
+              ヤマセがいつ、どこで、どんな風のときににおうのか。研究や授業、データ分析に、このデータをぜひ使ってください。このデータからヤマセの研究が進んでいくことを願っています。
+            </p>
+          </div>
+
+          <dl className="mt-10 bg-white rounded-2xl border border-slate-400 divide-y divide-slate-400 text-base">
+            {openDataFacts.map((fact) => (
+              <div
+                key={fact.term}
+                className="px-5 py-4 sm:grid sm:grid-cols-[9rem_1fr] sm:gap-4"
+              >
+                <dt className="font-bold text-slate-900">{fact.term}</dt>
+                <dd className="mt-1 sm:mt-0 text-slate-900">{fact.desc}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/open-data"
+              className="inline-flex items-center justify-center bg-cyan-800 text-white text-base font-bold py-4 px-8 rounded-full underline underline-offset-4 hover:decoration-2 hover:bg-cyan-900 transition-colors duration-200"
+            >
+              データの内容と使い方を見る
+            </Link>
+            <a
+              href="/api/open-data/posts/"
+              className="inline-flex items-center justify-center bg-white text-cyan-800 text-base font-bold py-4 px-8 rounded-full border-2 border-cyan-800 underline underline-offset-4 hover:decoration-2 transition-colors duration-200"
+            >
+              直近7日間のデータ（JSON）
+            </a>
+          </div>
+
+          <div className="mt-14">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">
+              このアプリで使っているオープンデータ
+            </h3>
+            <p className="text-slate-900 text-base mb-4">
+              地図や天気、投稿場所の住所には、次のオープンデータを使っています。
+            </p>
+            <ul className="space-y-4 text-base">
+              {usedOpenData.map((data) => (
+                <li key={data.name} className="border-b border-slate-400 pb-4">
+                  <p className="font-bold text-slate-900">{data.name}</p>
+                  <p className="text-slate-600 mt-1">
+                    出典：{data.provider}（
+                    <a
+                      href={data.licenseUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-800 underline underline-offset-2 hover:decoration-2"
+                    >
+                      {data.license}
+                      <span className="sr-only">（新しいタブで開きます）</span>
+                    </a>
+                    ）
+                  </p>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </section>
